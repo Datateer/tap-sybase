@@ -172,7 +172,7 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
         if isinstance(elem, datetime.timedelta):
             epoch = datetime.datetime.utcfromtimestamp(0)
             timedelta_from_epoch = epoch + elem
-            row_to_persist += (timedelta_from_epoch.isoformat() + "+00:00",)
+            row_to_persist += (timedelta_from_epoch.isoformat(),)
 
         elif isinstance(elem, bytes):
             # for BIT value, treat 0 as False, 1 as True and anything else as hex
