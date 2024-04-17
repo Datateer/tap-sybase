@@ -52,6 +52,8 @@ def sync_table(mssql_conn, config, catalog_entry, state, columns):
             params = {}
 
             if replication_key_value is not None:
+                if "+00:00" in replication_key_value:
+                    replication_key_value = replication_key_value.removesuffix("+00:00")
                 if catalog_entry.schema.properties[replication_key_metadata].format == "date-time":
                     replication_key_value = pendulum.parse(replication_key_value)
 
