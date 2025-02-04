@@ -344,7 +344,20 @@ def discover_catalog(mssql_conn, config):
 
             entries.append(entry)
     LOGGER.info("Catalog ready")
-    return Catalog(entries)
+    catalog = Catalog(entries)
+
+    # After generating the catalog but before returning it,
+    # check for and apply any schema overrides from config
+    if 'schema' in config:
+        for stream in catalog.streams:
+            table_schema = config['schema'].get(stream.tap_stream_id)
+            if table_schema and 'properties' in table_schema:
+                for col_name, col_schema in table_schema['properties'].items():
+                    if col_name in stream.schema.properties:
+                        # Apply the override
+                        stream.schema.properties[col_name].type = col_schema['type']
+
+    return catalog
 
 
 def do_discover(mssql_conn, config):
