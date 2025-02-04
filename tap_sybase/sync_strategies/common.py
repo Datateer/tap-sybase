@@ -177,8 +177,8 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
         LOGGER.info(f"Schema property type: {property_type}")
         
         # Handle type conversion for integers
-        if isinstance(elem, decimal.Decimal):
-            LOGGER.info("Found decimal value")
+        if isinstance(elem, (decimal.Decimal, float)):
+            LOGGER.info("Found decimal or float value")
             # Handle both single type and array formats
             if isinstance(property_type, list):
                 # If it's an array of types, use the first non-null type
@@ -186,7 +186,7 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
                 LOGGER.info(f"Selected type from list: {property_type}")
             
             if property_type == 'integer':
-                LOGGER.debug(f"Converting decimal {elem} to integer for column {columns[idx]}")
+                LOGGER.info(f"Converting value {elem} to integer for column {columns[idx]}")
                 row_to_persist += (int(elem),)
             elif property_schema.format == 'singer.decimal':
                 row_to_persist += (str(elem),)
