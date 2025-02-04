@@ -7,6 +7,7 @@ import singer
 import time
 import pytz
 import uuid
+import decimal
 
 import singer.metrics as metrics
 from singer import metadata
@@ -167,9 +168,22 @@ def default_date_format():
 def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
     row_to_persist = ()
     for idx, elem in enumerate(row):
-        property_type = catalog_entry.schema.properties[columns[idx]].type
-        property_format = catalog_entry.schema.properties[columns[idx]].format
-        if isinstance(elem, datetime.timedelta):
+        property_schema = catalog_entry.schema.properties[columns[idx]]
+        property_type = property_schema.type
+        # Handle type conversion for integers
+        if isinstance(elem, (decimal.Decimal, float)):
+            # Handle both single type and array formats
+            if isinstance(property_type, list):
+                # If it's an array of types, use the first non-null type
+                property_type = next((t for t in property_type if t != 'null'), property_type[0])
+            
+            if property_type == 'integer':
+                row_to_persist += (int(elem),)
+            elif property_schema.format == 'singer.decimal':
+                row_to_persist += (str(elem),)
+            else:
+                row_to_persist += (float(elem),)
+        elif isinstance(elem, datetime.timedelta):
             epoch = datetime.datetime.utcfromtimestamp(0)
             timedelta_from_epoch = epoch + elem
             row_to_persist += (timedelta_from_epoch.isoformat(),)
@@ -195,11 +209,6 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
             row_to_persist += (boolean_representation,)
         elif isinstance(elem, uuid.UUID):
             row_to_persist += (str(elem),)
-        elif property_format == 'singer.decimal':
-            if elem is None:
-                row_to_persist += (elem,)
-            else:
-                row_to_persist += (str(elem),)
         else:
             row_to_persist += (elem,)
     rec = dict(zip(columns, row_to_persist))
@@ -237,7 +246,7 @@ def sync_query(cursor, catalog_entry, state, select_sql, columns, stream_version
 
     LOGGER.info(f"{arraysize=}")
     rows_saved = 0
-
+    
     database_name = get_database_name(catalog_entry)
 
     with metrics.record_counter(None) as counter:

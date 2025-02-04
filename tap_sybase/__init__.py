@@ -344,7 +344,44 @@ def discover_catalog(mssql_conn, config):
 
             entries.append(entry)
     LOGGER.info("Catalog ready")
-    return Catalog(entries)
+    catalog = Catalog(entries)
+
+    # After generating the catalog but before returning it,
+    # check for and apply any schema and metadata overrides from config
+    if 'metadata' in config:
+        for stream in catalog.streams:
+            stream_metadata = config['metadata'].get(stream.tap_stream_id)
+            if stream_metadata:
+                # Handle stream-level metadata
+                for key, value in stream_metadata.items():
+                    if not isinstance(value, dict):
+                        md_map = metadata.to_map(stream.metadata)
+                        md_map = metadata.write(md_map, (), key, value)
+                        stream.metadata = metadata.to_list(md_map)
+                
+                # Handle field-level metadata
+                for field_name, field_metadata in stream_metadata.items():
+                    if isinstance(field_metadata, dict):
+                        md_map = metadata.to_map(stream.metadata)
+                        for meta_key, meta_value in field_metadata.items():
+                            md_map = metadata.write(
+                                md_map,
+                                ('properties', field_name),
+                                meta_key,
+                                meta_value
+                            )
+                        stream.metadata = metadata.to_list(md_map)
+
+    # Apply any schema overrides (existing code)
+    if 'schema' in config:
+        for stream in catalog.streams:
+            table_schema = config['schema'].get(stream.tap_stream_id)
+            if table_schema and 'properties' in table_schema:
+                for col_name, col_schema in table_schema['properties'].items():
+                    if col_name in stream.schema.properties:
+                        stream.schema.properties[col_name].type = col_schema['type']
+                        
+    return catalog
 
 
 def do_discover(mssql_conn, config):
