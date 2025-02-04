@@ -372,16 +372,15 @@ def discover_catalog(mssql_conn, config):
                             )
                         stream.metadata = metadata.to_list(md_map)
 
-    # Apply any schema overrides
-    schema_config = config.get('schema')
-    if schema_config:
+    # Apply any schema overrides (existing code)
+    if 'schema' in config:
         for stream in catalog.streams:
-            table_schema = schema_config.get(stream.tap_stream_id)
+            table_schema = config['schema'].get(stream.tap_stream_id)
             if table_schema and 'properties' in table_schema:
                 for col_name, col_schema in table_schema['properties'].items():
                     if col_name in stream.schema.properties:
                         stream.schema.properties[col_name].type = col_schema['type']
-
+                        
     return catalog
 
 

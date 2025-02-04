@@ -170,16 +170,18 @@ def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
     for idx, elem in enumerate(row):
         property_schema = catalog_entry.schema.properties[columns[idx]]
         property_type = property_schema.type
-        property_format = property_schema.format
-
-        # Handle type conversion for integers
-        if isinstance(elem, decimal.Decimal) and "integer" in property_type:
-            if elem.as_integer_ratio()[1] == 1:  # Check if it's a whole number
-                row_to_persist += (int(elem),)
+        
+        # Handle type conversion for integers - be more explicit about type checking
+        if isinstance(elem, decimal.Decimal):
+            if isinstance(property_type, list):
+                desired_type = property_type[0] if "null" in property_type else property_type[0]
             else:
-                raise ValueError(f"Cannot convert decimal {elem} to integer for column {columns[idx]}")
-        elif isinstance(elem, decimal.Decimal):
-            if property_format == 'singer.decimal':
+                desired_type = property_type
+
+            if desired_type == "integer":
+                LOGGER.debug(f"Converting decimal {elem} to integer for column {columns[idx]}")
+                row_to_persist += (int(elem),)
+            elif property_schema.format == 'singer.decimal':
                 row_to_persist += (str(elem),)
             else:
                 row_to_persist += (float(elem),)
