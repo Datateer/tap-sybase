@@ -168,16 +168,24 @@ def default_date_format():
 def row_to_singer_record(catalog_entry, version, row, columns, time_extracted):
     row_to_persist = ()
     for idx, elem in enumerate(row):
+        LOGGER.info(f"Processing column {columns[idx]}")
+        LOGGER.info(f"Value type: {type(elem)}")
+        LOGGER.info(f"Value: {elem}")
+        
         property_schema = catalog_entry.schema.properties[columns[idx]]
         property_type = property_schema.type
+        LOGGER.info(f"Schema property type: {property_type}")
         
         # Handle type conversion for integers
         if isinstance(elem, decimal.Decimal):
-            # Handle both single type and array of types
-            desired_types = property_type if isinstance(property_type, list) else [property_type]
+            LOGGER.info("Found decimal value")
+            # Handle both single type and array formats
+            if isinstance(property_type, list):
+                # If it's an array of types, use the first non-null type
+                property_type = next((t for t in property_type if t != 'null'), property_type[0])
+                LOGGER.info(f"Selected type from list: {property_type}")
             
-            # If 'integer' is one of the desired types, convert to int
-            if 'integer' in desired_types:
+            if property_type == 'integer':
                 LOGGER.debug(f"Converting decimal {elem} to integer for column {columns[idx]}")
                 row_to_persist += (int(elem),)
             elif property_schema.format == 'singer.decimal':
