@@ -246,7 +246,7 @@ def sync_query(cursor, catalog_entry, state, select_sql, columns, stream_version
 
     LOGGER.info(f"{arraysize=}")
     rows_saved = 0
-
+    
     database_name = get_database_name(catalog_entry)
 
     with metrics.record_counter(None) as counter:
